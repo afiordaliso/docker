@@ -9,21 +9,21 @@ pipeline {
     stages {
         stage('Clone') {
             steps {
-                timeout(time: 2, unit: 'MINUTES'){
+                timeout(time: 4, unit: 'MINUTES'){
                     git 'https://github.com/afiordaliso/repasando-programacion.git'
                 }
             }
         }
         stage('Build') {
             steps {
-                timeout(time: 2, unit: 'MINUTES'){
+                timeout(time: 4, unit: 'MINUTES'){
                     sh "mvn -DskipTests clean package"
                 }
             }
         }
         stage('Test') {
             steps {
-                timeout(time: 2, unit: 'MINUTES'){
+                timeout(time: 4, unit: 'MINUTES'){
                     // Se cambia <test> por <install> para que se genere el reporte de jacoco
                     sh "mvn clean install"
                 }
@@ -31,7 +31,7 @@ pipeline {
         }
         stage('Sonar') {
             steps {
-                timeout(time: 2, unit: 'MINUTES'){
+                timeout(time: 4, unit: 'MINUTES'){
                     withSonarQubeEnv('sonarqube'){
                         sh "mvn sonar:sonar"
                     }
@@ -43,7 +43,7 @@ pipeline {
 
                 sleep(10) //seconds
 
-                timeout(time: 2, unit: 'MINUTES'){
+                timeout(time: 4, unit: 'MINUTES'){
                     waitForQualityGate abortPipeline: true
                 }
             }
