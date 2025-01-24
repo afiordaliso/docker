@@ -10,25 +10,22 @@ pipeline {
         stage('Clone') {
             steps {
                 timeout(time: 2, unit: 'MINUTES'){
-                    git 'https://github.com/afiordaliso/demo-crud-repaso.git'
+                    git 'https://github.com/afiordaliso/repasando-programacion.git'
                 }
             }
         }
         stage('Build') {
             steps {
                 timeout(time: 2, unit: 'MINUTES'){
-                    sh "mvn -DskipTests clean package -f repasando-programacion/pom.xml"
+                    sh "mvn -DskipTests clean package"
                 }
             }
         }
         stage('Test') {
             steps {
                 timeout(time: 2, unit: 'MINUTES'){
-                    sh "ls -l springboot-demos"
-                    sh "ls -l springboot-demos/demo-crud-repaso"
-                    sh "ls -l springboot-demos/demo-crud-repaso/pom.xml"
                     // Se cambia <test> por <install> para que se genere el reporte de jacoco
-                    sh "mvn clean install -f demo-crud-repaso/pom.xml"
+                    sh "mvn clean install"
                 }
             }
         }
