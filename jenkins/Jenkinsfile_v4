@@ -10,7 +10,8 @@ pipeline {
         stage('Clone') {
             steps {
                 timeout(time: 4, unit: 'MINUTES'){
-                    git 'https://github.com/afiordaliso/repasando-programacion.git'
+                git url: 'https://github.com/afiordaliso/repasando-programacion.git', credentialsId: ''
+
                 }
             }
         }
