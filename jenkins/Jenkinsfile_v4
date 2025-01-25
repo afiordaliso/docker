@@ -2,56 +2,63 @@ pipeline {
     agent any
 
     tools {
-        // Install the Maven version configured as "M3" and add it to the path.
         maven "MAVEN_HOME"
+    }
+
+    environment {
+        REPO_URL = 'https://github.com/afiordaliso/repasando-programacion.git'
+        BRANCH_NAME = 'produccion'
     }
 
     stages {
         stage('Clone') {
             steps {
-                timeout(time: 4, unit: 'MINUTES'){
-                cleanWs()
-git branch: 'prodiccion', url: 'https://github.com/afiordaliso/repasando-programacion.git'
+                timeout(time: 4, unit: 'MINUTES') {
+                    cleanWs()
+                    git branch: "${BRANCH_NAME}", url: "${REPO_URL}"
                 }
             }
         }
         stage('Build') {
             steps {
-                timeout(time: 4, unit: 'MINUTES'){
+                echo "Building project with Maven"
+                timeout(time: 4, unit: 'MINUTES') {
                     sh "mvn -DskipTests clean package"
                 }
             }
         }
         stage('Test') {
             steps {
-                timeout(time: 4, unit: 'MINUTES'){
-                    // Se cambia <test> por <install> para que se genere el reporte de jacoco
+                echo "Running tests and generating coverage report"
+                timeout(time: 4, unit: 'MINUTES') {
                     sh "mvn clean install"
                 }
+                junit '**/target/surefire-reports/*.xml'
             }
         }
         stage('Sonar') {
             steps {
-                timeout(time: 4, unit: 'MINUTES'){
-                    withSonarQubeEnv('sonarqube'){
+                echo "Analyzing code with SonarQube"
+                timeout(time: 4, unit: 'MINUTES') {
+                    withSonarQubeEnv('sonarqube') {
                         sh "mvn sonar:sonar"
                     }
                 }
             }
         }
-        stage('Quality gate') {
+        stage('Quality Gate') {
             steps {
-
-                sleep(10) //seconds
-
-                timeout(time: 4, unit: 'MINUTES'){
+                echo "Checking quality gate status"
+                sleep(10)
+                timeout(time: 4, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
         }
         stage('Deploy') {
             steps {
-                echo "mvn spring-boot:run"
+                echo "Deploying application"
+                sh "mvn spring-boot:run"
             }
         }
     }
