@@ -11,7 +11,7 @@ pipeline {
             steps {
                 timeout(time: 4, unit: 'MINUTES'){
                 cleanWs()
-                git 'https://github.com/afiordaliso/repasando-programacion.git'
+git branch: 'prodiccion', url: 'https://github.com/afiordaliso/repasando-programacion.git'
                 }
             }
         }
