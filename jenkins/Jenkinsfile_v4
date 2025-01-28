@@ -12,6 +12,7 @@ pipeline {
     environment {
         REPO_URL = 'https://github.com/afiordaliso/repasando-programacion.git'
         BRANCH_NAME = 'dev_fiorda'
+        BRANCH_PROD = 'produccion'
     }
 
     stages {
@@ -64,15 +65,15 @@ pipeline {
     post {
         success {
             echo "El código pasó los estándares de calidad."
-            script {
-                // Si pasa el Quality Gate, se hace el merge a la rama producción
-                sh """
-                    git fetch origin
-                    git checkout produccion
-                    git merge ${BRANCH_NAME}
-                    git push origin produccion
-                """
-            }
+script {
+    withCredentials([usernamePassword(credentialsId: 'y7267d1b7-8281-4ecb-91b8-e5d9befcbf82', usernameVariable: 'afiordaliso', passwordVariable: '91122339Af$$$')]) {
+        sh """
+            git fetch origin
+            git checkout produccion
+            git merge ${BRANCH_NAME}
+            git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/afiordaliso/repasando-programacion.git produccion
+        """
+    }
         }
         failure {
             echo "El código no pasó los estándares de calidad."
