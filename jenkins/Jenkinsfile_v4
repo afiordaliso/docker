@@ -6,8 +6,8 @@ pipeline {
     }
 
     triggers {
-    githubPush()
-}
+        githubPush()  // Activado con push en GitHub
+    }
 
     environment {
         REPO_URL = 'https://github.com/afiordaliso/repasando-programacion.git'
@@ -60,18 +60,22 @@ pipeline {
             }
         }
 
-            post {
-        success {
-            echo "Paso el los estandares de calida."
-        }
-        failure {
-            error "No paso."
-        }
-    }
-
-        stage('Deploy') {
-            steps {
-                echo "Se mergeo correctamente"
+        post {
+            success {
+                echo "El código pasó los estándares de calidad."
+                script {
+                    // Si pasa el Quality Gate, se hace el merge a la rama producción
+                    sh """
+                        git fetch origin
+                        git checkout produccion
+                        git merge ${BRANCH_NAME}
+                        git push origin produccion
+                    """
+                }
+            }
+            failure {
+                echo "El código no pasó los estándares de calidad."
+                error "Pipeline fallido debido a los Quality Gates."
             }
         }
     }
