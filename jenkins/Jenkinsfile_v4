@@ -59,9 +59,19 @@ pipeline {
                 }
             }
         }
+
+            post {
+        success {
+            echo "Paso el los estandares de calida."
+        }
+        failure {
+            error "No paso."
+        }
+    }
+
         stage('Deploy') {
             steps {
-                echo "Deploying application"
+                echo "Se mergeo correctamente"
             }
         }
     }
