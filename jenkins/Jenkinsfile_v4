@@ -11,7 +11,7 @@ pipeline {
 
     environment {
         REPO_URL = 'https://github.com/afiordaliso/repasando-programacion.git'
-        BRANCH_NAME = 'produccion'
+        BRANCH_NAME = 'dev_fiorda'
     }
 
     stages {
