@@ -66,13 +66,14 @@ pipeline {
         success {
             echo "El código pasó los estándares de calidad."
 script {
-    withCredentials([usernamePassword(credentialsId: 'y7267d1b7-8281-4ecb-91b8-e5d9befcbf82', usernameVariable: 'afiordaliso', passwordVariable: '91122339Af$$$')]) {
+    withCredentials([usernamePassword(credentialsId: 'your-credentials-id', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
         sh """
             git fetch origin
             git checkout produccion
             git merge ${BRANCH_NAME}
             git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/afiordaliso/repasando-programacion.git produccion
         """
+        }
     }
         }
         failure {
