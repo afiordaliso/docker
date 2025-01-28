@@ -5,6 +5,10 @@ pipeline {
         maven "MAVEN_HOME"
     }
 
+    triggers {
+    githubPush()
+}
+
     environment {
         REPO_URL = 'https://github.com/afiordaliso/repasando-programacion.git'
         BRANCH_NAME = 'produccion'
