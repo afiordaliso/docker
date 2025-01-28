@@ -66,7 +66,7 @@ pipeline {
         success {
             echo "El código pasó los estándares de calidad."
 script {
-    withCredentials([usernamePassword(credentialsId: 'your-credentials-id', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
+    withCredentials([usernamePassword(credentialsId: '7267d1b7-8281-4ecb-91b8-e5d9befcbf82', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
         sh """
             git fetch origin
             git checkout produccion
