@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         REPO_URL = 'https://github.com/afiordaliso/repasando-programacion.git'
-        BRANCH_NAME = env.BRANCH_NAME // Usa el nombre de la rama detectada por Jenkins
+        BRANCH_NAME = 'dev_fiorda' // Usa el nombre de la rama detectada por Jenkins
         BRANCH_PROD = 'produccion'
     }
 
