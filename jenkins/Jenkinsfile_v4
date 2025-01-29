@@ -19,16 +19,15 @@ pipeline {
         stage('Clone') {
             steps {
                 timeout(time: 4, unit: 'MINUTES') {
-                                        checkout([
+                    checkout([
                         $class: 'GitSCM',
-                        branches: [[name: '*/dev_fiorda']],  // O '*/develop', según tu repositorio
+                        branches: [[name: "*/${BRANCH_NAME}"]],
                         userRemoteConfigs: [[
-                            url: 'git@github.com:afiordaliso/repasando-programacion.git',
-                            credentialsId: 'jenkins'
+                            url: "${REPO_URL}",
+                            credentialsId: 'github-ssh'
                         ]]
                     ])
-                    cleanWs()
-                    git branch: "${BRANCH_NAME}", url: "${REPO_URL}"
+                    cleanWs()  // Limpia el espacio de trabajo
                 }
             }
         }
@@ -62,7 +61,6 @@ pipeline {
         stage('Quality Gate') {
             steps {
                 echo "Checking quality gate status"
-                sleep(10)
                 timeout(time: 4, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
@@ -78,8 +76,9 @@ pipeline {
                 sh """
                     git fetch origin
                     git checkout ${BRANCH_PROD}
+                    git pull --rebase origin ${BRANCH_PROD}  // Asegura que estamos actualizados
                     git merge ${BRANCH_NAME}
-                    git push origin produccion
+                    git push origin ${BRANCH_PROD}
                 """
             }
         }
