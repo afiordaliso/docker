@@ -64,9 +64,6 @@ pipeline {
         }
 
         stage('Merge to Production') {
-            when {
-                branch 'dev' // Aquí puedes ajustar según tus necesidades
-            }
             steps {
                 script {
                     echo "Merging to production branch"
