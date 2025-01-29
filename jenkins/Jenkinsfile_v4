@@ -36,6 +36,16 @@ pipeline {
             }
         }
 
+                stage('Pruebas') {
+            steps {
+                echo "Running tests and generating coverage report"
+                timeout(time: 4, unit: 'MINUTES') {
+                    sh "mvn clean install"
+                }
+                junit '**/target/surefire-reports/*.xml'
+            }
+        }
+
         stage('SonarQube Analysis') {
             steps {
                 echo "Running SonarQube analysis"
