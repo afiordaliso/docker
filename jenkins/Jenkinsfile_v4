@@ -20,12 +20,13 @@ pipeline {
             steps {
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: "*/${BRANCH_NAME}"]],
+                    branches: [[name: "${BRANCH_NAME}"]], // Busca la rama exacta
                     userRemoteConfigs: [[
                         url: "${REPO_URL}",
                         credentialsId: 'github-ssh' // Aquí va la credencial SSH configurada
                     ]]
                 ])
+                sh 'git fetch --all' // Sincroniza todas las ramas remotas
             }
         }
 
@@ -36,7 +37,7 @@ pipeline {
             }
         }
 
-                stage('Pruebas') {
+        stage('Pruebas') {
             steps {
                 echo "Running tests and generating coverage report"
                 timeout(time: 4, unit: 'MINUTES') {
@@ -67,11 +68,12 @@ pipeline {
             steps {
                 script {
                     echo "Merging to production branch"
-                    // Si pasa el Quality Gate, hace el merge
+                    // Verifica que las ramas existan antes de hacer el merge
                     sh """
                         git fetch origin
                         git checkout ${BRANCH_PROD}
-                        git merge ${BRANCH_NAME}
+                        git pull origin ${BRANCH_PROD}
+                        git merge origin/${BRANCH_NAME}
                         git push origin ${BRANCH_PROD}
                     """
                 }
