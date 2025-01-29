@@ -10,7 +10,7 @@ pipeline {
     }
 
     environment {
-        REPO_URL = 'https://github.com/afiordaliso/repasando-programacion.git'
+        REPO_URL = 'git@github.com:afiordaliso/repasando-programacion.git'
         BRANCH_NAME = 'dev_fiorda'
         BRANCH_PROD = 'produccion'
     }
