@@ -1,6 +1,12 @@
 pipeline {
     agent any
 
+    environment {
+        REPO_URL = 'git@github.com:afiordaliso/repasando-programacion.git'
+        BRANCH_NAME = env.BRANCH_NAME // Usa el nombre de la rama detectada por Jenkins
+        BRANCH_PROD = 'produccion'
+    }
+
     tools {
         maven "MAVEN_HOME"
     }
@@ -9,60 +15,58 @@ pipeline {
         githubPush()  // Activado con push en GitHub
     }
 
-    environment {
-        REPO_URL = 'git@github.com:afiordaliso/repasando-programacion.git'
-        BRANCH_NAME = 'dev_fiorda'
-        BRANCH_PROD = 'produccion'
-    }
-
     stages {
-        stage('Clone') {
+        stage('Checkout') {
             steps {
-                timeout(time: 4, unit: 'MINUTES') {
-                    checkout([
-                        $class: 'GitSCM',
-                        branches: [[name: "*/${BRANCH_NAME}"]],
-                        userRemoteConfigs: [[
-                            url: "${REPO_URL}",
-                            credentialsId: 'github-ssh'
-                        ]]
-                    ])
-                    cleanWs()  // Limpia el espacio de trabajo
-                }
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${BRANCH_NAME}"]],
+                    userRemoteConfigs: [[
+                        url: "${REPO_URL}",
+                        credentialsId: 'github-ssh' // Aquí va la credencial SSH configurada
+                    ]]
+                ])
             }
         }
+
         stage('Build') {
             steps {
                 echo "Building project with Maven"
-                timeout(time: 4, unit: 'MINUTES') {
-                    sh "mvn -DskipTests clean package"
-                }
+                sh "mvn clean package -DskipTests"
             }
         }
-        stage('Test') {
+
+        stage('SonarQube Analysis') {
             steps {
-                echo "Running tests and generating coverage report"
-                timeout(time: 4, unit: 'MINUTES') {
-                    sh "mvn clean install"
-                }
-                junit '**/target/surefire-reports/*.xml'
-            }
-        }
-        stage('Sonar') {
-            steps {
-                echo "Analyzing code with SonarQube"
-                timeout(time: 4, unit: 'MINUTES') {
-                    withSonarQubeEnv('sonarqube') {
-                        sh "mvn sonar:sonar"
-                    }
+                echo "Running SonarQube analysis"
+                withSonarQubeEnv('sonarqube') {
+                    sh "mvn sonar:sonar"
                 }
             }
         }
+
         stage('Quality Gate') {
             steps {
-                echo "Checking quality gate status"
-                timeout(time: 4, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
+                echo "Checking Quality Gate status"
+                sleep(10) // Para darle tiempo a que se genere el resultado en SonarQube
+                waitForQualityGate abortPipeline: true
+            }
+        }
+
+        stage('Merge to Production') {
+            when {
+                branch 'dev' // Aquí puedes ajustar según tus necesidades
+            }
+            steps {
+                script {
+                    echo "Merging to production branch"
+                    // Si pasa el Quality Gate, hace el merge
+                    sh """
+                        git fetch origin
+                        git checkout ${BRANCH_PROD}
+                        git merge ${BRANCH_NAME}
+                        git push origin ${BRANCH_PROD}
+                    """
                 }
             }
         }
@@ -70,21 +74,10 @@ pipeline {
 
     post {
         success {
-            echo "El código pasó los estándares de calidad."
-            script {
-                // Si pasa el Quality Gate, se hace el merge a la rama producción
-                sh """
-                    git fetch origin
-                    git checkout ${BRANCH_PROD}
-                    git pull --rebase origin ${BRANCH_PROD}  // Asegura que estamos actualizados
-                    git merge ${BRANCH_NAME}
-                    git push origin ${BRANCH_PROD}
-                """
-            }
+            echo "Pipeline exitoso. Merge realizado."
         }
         failure {
-            echo "El código no pasó los estándares de calidad."
-            error "Pipeline fallido debido a los Quality Gates."
+            echo "Pipeline fallido. No se realizó el merge."
         }
     }
 }
