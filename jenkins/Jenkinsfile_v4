@@ -64,21 +64,23 @@ pipeline {
             }
         }
 
-        stage('Merge to Production') {
-            steps {
-                script {
-                    echo "Merging to production branch"
-                    // Verifica que las ramas existan antes de hacer el merge
-                    sh """
-                        git fetch origin
-                        git checkout ${BRANCH_PROD}
-                        git pull origin ${BRANCH_PROD}
-                        git merge origin/${BRANCH_NAME}
-                        git push origin ${BRANCH_PROD}
-                    """
-                }
-            }
+stage('Merge to Production') {
+    steps {
+        script {
+            echo "Merging to production branch"
+            sh """
+                git config --global user.email "fiordaa1@gmail.com"
+                git config --global user.name "Jenkins CI"
+
+                git fetch origin
+                git checkout ${BRANCH_PROD}
+                git pull origin ${BRANCH_PROD}
+                git merge origin/${BRANCH_NAME} --no-ff --commit
+                git push origin ${BRANCH_PROD}
+            """
         }
+    }
+}
     }
 
     post {
