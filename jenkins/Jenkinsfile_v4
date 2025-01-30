@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         REPO_URL = 'git@github.com:afiordaliso/repasando-programacion.git'
-        BRANCH_PROD = 'produccion'  // Solo esta se mantiene fija
+        BRANCH_PROD = 'produccion'  // Rama fija de producción
     }
 
     tools {
@@ -15,11 +15,22 @@ pipeline {
             steps {
                 script {
                     echo "📌 Ejecutando en la rama: ${env.BRANCH_NAME}"
-                    if (env.BRANCH_NAME != 'dev_fiorda') {
+
+                    // Actualizar todas las ramas
+                    sh "git fetch --all"
+
+                    // Verificar si dev_fiorda existe en remoto
+                    def branchExists = sh(script: "git ls-remote --heads origin dev_fiorda", returnStatus: true) == 0
+
+                    if (branchExists) {
+                        echo "🔄 Se encontró la rama 'dev_fiorda', cambiando..."
                         sh """
-                            git fetch origin dev_fiorda
                             git checkout -B dev_fiorda origin/dev_fiorda
+                            git pull origin dev_fiorda
                         """
+                    } else {
+                        echo "⚠️ La rama 'dev_fiorda' no existe, continuando con ${env.BRANCH_NAME}"
+                        sh "git pull origin ${env.BRANCH_NAME}"
                     }
                 }
             }
