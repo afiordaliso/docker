@@ -3,28 +3,24 @@ pipeline {
 
     environment {
         REPO_URL = 'git@github.com:afiordaliso/repasando-programacion.git'
-        BRANCH_PROD = 'produccion'  // Rama a la que se hará merge tras pasar Quality Gate
+        BRANCH_PROD = 'produccion'  // Solo esta se mantiene fija
     }
 
     tools {
         maven "MAVEN_HOME"
     }
 
-    triggers {
-        githubPush()  // Activado con push en GitHub
-    }
-
     stages {
         stage('Checkout') {
             steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/produccion']],
-                    userRemoteConfigs: [[
-                        credentialsId: 'github-ssh',
-                        url: 'git@github.com:afiordaliso/repasando-programacion.git'
-                    ]]
-                ])
+                script {
+                    echo "📌 Ejecutando en la rama: ${env.BRANCH_NAME}"
+                    if (env.BRANCH_NAME == 'dev_fiorda') {
+                        echo "✅ Rama de desarrollo detectada. Continuando..."
+                    } else {
+                        echo "⚠️ No es la rama de desarrollo. Este pipeline solo hará merge desde dev_fiorda."
+                    }
+                }
             }
         }
 
@@ -54,23 +50,34 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
-                echo "Checking Quality Gate status"
-                sleep(10) // Da tiempo a que se procese el análisis en SonarQube
-                waitForQualityGate abortPipeline: true
+                script {
+                    try {
+                        echo "Checking Quality Gate status"
+                        sleep(10)
+                        waitForQualityGate abortPipeline: true
+                    } catch (Exception e) {
+                        echo "❌ Quality Gate falló. Deteniendo el pipeline."
+                        currentBuild.result = 'FAILURE'
+                        error "Fallo en Quality Gate"
+                    }
+                }
             }
         }
 
         stage('Merge to Production') {
+            when {
+                expression { env.BRANCH_NAME == 'dev_fiorda' && (currentBuild.result == null || currentBuild.result == 'SUCCESS') }
+            }
             steps {
                 script {
-                    echo "Merging branch '${env.BRANCH_NAME}' into '${BRANCH_PROD}'"
+                    echo "🔄 Merging branch '${env.BRANCH_NAME}' into '${BRANCH_PROD}'"
                     sh """
                         git fetch origin
                         git checkout ${BRANCH_PROD}
+                        git reset --hard origin/${BRANCH_PROD}
                         git pull origin ${BRANCH_PROD}
-                        git reset --hard origin/${env.BRANCH_NAME}  # Asegurar estado limpio
-                        git merge --no-ff origin/${env.BRANCH_NAME}  # Merge seguro
-                        git push --force-with-lease origin ${BRANCH_PROD}
+                        git merge --no-ff origin/${env.BRANCH_NAME} || git merge --abort
+                        git push origin ${BRANCH_PROD}
                     """
                 }
             }
