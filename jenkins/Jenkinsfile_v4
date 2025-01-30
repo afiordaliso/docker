@@ -18,7 +18,7 @@ pipeline {
                     if (env.BRANCH_NAME == 'dev_fiorda') {
                         echo "✅ Rama de desarrollo detectada. Continuando..."
                     } else {
-                        echo "⚠️ No es la rama de desarrollo. Este pipeline solo hará merge desde dev_fiorda."
+                        sh "git checkout dev_fiorda"
                     }
                 }
             }
