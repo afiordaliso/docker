@@ -3,8 +3,7 @@ pipeline {
 
     environment {
         REPO_URL = 'git@github.com:afiordaliso/repasando-programacion.git'
-        BRANCH_NAME = 'dev_fiorda' // Usa el nombre de la rama detectada por Jenkins
-        BRANCH_PROD = 'produccion'
+        BRANCH_PROD = 'produccion'  // Rama a la que se hará merge tras pasar Quality Gate
     }
 
     tools {
@@ -20,13 +19,12 @@ pipeline {
             steps {
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: "${BRANCH_NAME}"]], // Busca la rama exacta
+                    branches: [[name: "*/${env.BRANCH_NAME}"]], 
                     userRemoteConfigs: [[
                         url: "${REPO_URL}",
-                        credentialsId: 'github-ssh' // Aquí va la credencial SSH configurada
+                        credentialsId: 'github-ssh'
                     ]]
                 ])
-                sh 'git fetch --all' // Sincroniza todas las ramas remotas
             }
         }
 
@@ -40,9 +38,7 @@ pipeline {
         stage('Pruebas') {
             steps {
                 echo "Running tests and generating coverage report"
-                timeout(time: 4, unit: 'MINUTES') {
-                    sh "mvn clean install"
-                }
+                sh "mvn clean install"
                 junit '**/target/surefire-reports/*.xml'
             }
         }
@@ -59,7 +55,7 @@ pipeline {
         stage('Quality Gate') {
             steps {
                 echo "Checking Quality Gate status"
-                sleep(10) // Para darle tiempo a que se genere el resultado en SonarQube
+                sleep(10) // Da tiempo a que se procese el análisis en SonarQube
                 waitForQualityGate abortPipeline: true
             }
         }
@@ -67,14 +63,14 @@ pipeline {
         stage('Merge to Production') {
             steps {
                 script {
-                    echo "Merging to production branch"
-                    // Verifica que las ramas existan antes de hacer el merge
+                    echo "Merging branch '${env.BRANCH_NAME}' into '${BRANCH_PROD}'"
                     sh """
                         git fetch origin
                         git checkout ${BRANCH_PROD}
                         git pull origin ${BRANCH_PROD}
-                        git merge origin/${BRANCH_NAME}
-                        git push origin ${BRANCH_PROD}
+                        git reset --hard origin/${env.BRANCH_NAME}  # Asegurar estado limpio
+                        git merge --no-ff origin/${env.BRANCH_NAME}  # Merge seguro
+                        git push --force-with-lease origin ${BRANCH_PROD}
                     """
                 }
             }
@@ -83,10 +79,10 @@ pipeline {
 
     post {
         success {
-            echo "Pipeline exitoso. Merge realizado."
+            echo "✅ Pipeline exitoso. Merge realizado correctamente."
         }
         failure {
-            echo "Pipeline fallido. No se realizó el merge."
+            echo "❌ Pipeline fallido. No se realizó el merge."
         }
     }
 }
