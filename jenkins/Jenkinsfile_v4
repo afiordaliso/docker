@@ -11,30 +11,28 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                script {
-                    echo "📌 Ejecutando en la rama: ${env.BRANCH_NAME}"
-
-                    // Actualizar todas las referencias remotas y eliminar caché de ramas eliminadas
-                    sh "git fetch --prune --all"
-
-                    // Verificar si dev_fiorda existe en el remoto
-                    def branchExists = sh(script: "git ls-remote --heads origin dev_fiorda", returnStatus: true) == 0
-
-                    if (branchExists) {
-                        echo "🔄 Se encontró la rama 'dev_fiorda', cambiando..."
-                        sh """
-                            git checkout --track origin/dev_fiorda || git checkout dev_fiorda
-                            git pull origin dev_fiorda
-                        """
-                    } else {
-                        echo "⚠️ La rama 'dev_fiorda' no existe, continuando con ${env.BRANCH_NAME}"
-                        sh "git pull origin ${env.BRANCH_NAME}"
-                    }
-                }
-            }
+stage('Mostrar Información del Repositorio') {
+    steps {
+        script {
+            echo "📌 Mostrando información del repositorio en el workspace de Jenkins..."
+            sh """
+                echo "📍 Ruta actual del workspace:"
+                pwd
+                echo "📂 Contenido del directorio actual:"
+                ls -la
+                echo "🔗 URL del repositorio remoto:"
+                git config --get remote.origin.url
+                echo "🌿 Rama actual:"
+                git rev-parse --abbrev-ref HEAD
+                echo "🕵️ Último commit:"
+                git log -1 --oneline
+                echo "📌 Todas las ramas disponibles:"
+                git branch -a
+            """
         }
+    }
+}
+
 
         stage('Build') {
             steps {
