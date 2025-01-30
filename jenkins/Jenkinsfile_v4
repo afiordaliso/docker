@@ -22,7 +22,7 @@ pipeline {
                     branches: [[name: "*/${env.BRANCH_NAME}"]], 
                     userRemoteConfigs: [[
                         url: "${REPO_URL}",
-                        credentialsId: 'github-ssh'
+                        credentialsId: 'github-ssh2'
                     ]]
                 ])
             }
