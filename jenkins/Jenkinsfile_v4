@@ -15,10 +15,11 @@ pipeline {
             steps {
                 script {
                     echo "📌 Ejecutando en la rama: ${env.BRANCH_NAME}"
-                    if (env.BRANCH_NAME == 'dev_fiorda') {
-                        echo "✅ Rama de desarrollo detectada. Continuando..."
-                    } else {
-                        sh "git checkout dev_fiorda"
+                    if (env.BRANCH_NAME != 'dev_fiorda') {
+                        sh """
+                            git fetch origin dev_fiorda
+                            git checkout -B dev_fiorda origin/dev_fiorda
+                        """
                     }
                 }
             }
@@ -57,7 +58,6 @@ pipeline {
                         waitForQualityGate abortPipeline: true
                     } catch (Exception e) {
                         echo "❌ Quality Gate falló. Deteniendo el pipeline."
-                        currentBuild.result = 'FAILURE'
                         error "Fallo en Quality Gate"
                     }
                 }
@@ -76,8 +76,8 @@ pipeline {
                         git checkout ${BRANCH_PROD}
                         git reset --hard origin/${BRANCH_PROD}
                         git pull origin ${BRANCH_PROD}
-                        git merge --no-ff origin/${env.BRANCH_NAME} || git merge --abort
-                        git push origin ${BRANCH_PROD}
+                        git merge --no-ff origin/${env.BRANCH_NAME} || (git merge --abort && exit 1)
+                        git push --force-with-lease origin ${BRANCH_PROD}
                     """
                 }
             }
