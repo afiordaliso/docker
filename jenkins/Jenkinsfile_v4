@@ -12,58 +12,40 @@ pipeline {
     }
 
     triggers {
-        githubPush()  // Activado con push en GitHub
+        githubPush()  // Se ejecuta cuando hay un push a GitHub
     }
 
     stages {
-        stage('Detectar PR') {
-            steps {
-                script {
-                    // Intentar detectar el PR automáticamente
-                    env.PR_NUMBER = env.CHANGE_ID
-
-                    // Si no se detecta, intentar obtenerlo manualmente desde git log
-                    if (!env.PR_NUMBER?.trim()) {
-                        env.PR_NUMBER = sh(
-                            script: "git log --merges --oneline | grep -oE '#[0-9]+' | head -1 | tr -d '#'",
-                            returnStdout: true
-                        ).trim()
-                    }
-
-                    // Si aún no se encuentra, cancelar el pipeline
-                    if (!env.PR_NUMBER?.trim()) {
-                        error("🚨 ERROR: No se pudo detectar el Pull Request. Cancelando ejecución.")
-                    } else {
-                        echo "✅ PR detectado: #${env.PR_NUMBER}"
-                    }
-                }
-            }
-        }
-
         stage('Checkout') {
             steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: "${BRANCH_NAME}"]],
-                    userRemoteConfigs: [[
-                        url: "${REPO_URL}",
-                        credentialsId: 'github-ssh'
-                    ]]
-                ])
-                sh 'git fetch --all'
+                script {
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: "${BRANCH_NAME}"]],
+                        userRemoteConfigs: [[
+                            url: "${REPO_URL}",
+                            credentialsId: 'github-ssh'
+                        ]]
+                    ])
+                    sh 'git fetch --all'
+                    
+                    // Guardar el commit anterior antes de los cambios
+                    env.PREVIOUS_COMMIT = sh(script: "git rev-parse HEAD~1", returnStdout: true).trim()
+                    echo "📝 Último commit antes del push: ${env.PREVIOUS_COMMIT}"
+                }
             }
         }
 
         stage('Construcción') {
             steps {
-                echo "Construyendo el proyecto con Maven"
+                echo "🔨 Construyendo el proyecto con Maven"
                 sh "mvn clean package -DskipTests"
             }
         }
 
         stage('Pruebas') {
             steps {
-                echo "Ejecutando pruebas unitarias"
+                echo "🧪 Ejecutando pruebas unitarias"
                 timeout(time: 4, unit: 'MINUTES') {
                     sh "mvn clean install"
                 }
@@ -73,7 +55,7 @@ pipeline {
 
         stage('SonarQube Análisis') {
             steps {
-                echo "Ejecutando análisis en SonarQube"
+                echo "📊 Ejecutando análisis en SonarQube"
                 withSonarQubeEnv('sonarqube') {
                     sh "mvn sonar:sonar"
                 }
@@ -82,16 +64,32 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
-                echo "Verificando calidad en SonarQube"
-                sleep(10)
-                waitForQualityGate abortPipeline: true
+                script {
+                    echo "🔍 Verificando Quality Gates en SonarQube"
+                    sleep(10) // Espera para permitir el análisis
+                    def qualityGateResult = waitForQualityGate()
+
+                    if (qualityGateResult.status != 'OK') {
+                        echo "❌ Quality Gate falló, descartando el commit..."
+                        
+                        // Volver al commit anterior y forzar el push para eliminar el commit fallido
+                        sh """
+                            git reset --hard ${env.PREVIOUS_COMMIT}
+                            git push origin ${BRANCH_NAME} --force
+                        """
+                        
+                        error("🚨 ERROR: Quality Gates fallaron. Commit descartado.")
+                    } else {
+                        echo "✅ Quality Gate aprobado, continuando con el pipeline..."
+                    }
+                }
             }
         }
 
         stage('Merge en Producción') {
             steps {
                 script {
-                    echo "Haciendo merge en producción"
+                    echo "📦 Haciendo merge en producción"
                     sh """
                         git config --global user.email "fiordaa1@gmail.com"
                         git config --global user.name "Jenkins CI"
