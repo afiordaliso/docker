@@ -5,7 +5,7 @@ pipeline {
         REPO_URL = 'git@github.com:afiordaliso/repasando-programacion.git'
         BRANCH_NAME = 'dev_fiorda'
         BRANCH_PROD = 'produccion'
-        GITHUB_TOKEN = credentials('github-token') // Token de GitHub almacenado en Jenkins
+        GITHUB_TOKEN = credentials('github-ssh') // Token de GitHub almacenado en Jenkins
         REPO_OWNER = 'afiordaliso' // Dueño del repositorio
         REPO_NAME = 'repasando-programacion' // Nombre del repositorio
         PR_NUMBER = '' // Se asignará si el pipeline detecta un PR
