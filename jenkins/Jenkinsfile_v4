@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         REPO_URL = 'git@github.com:afiordaliso/repasando-programacion.git'
-        BRANCH_NAME = 'dev_fiorda'
+        BRANCH_NAME = 'dev_fiorda' // Usa el nombre de la rama detectada por Jenkins
         BRANCH_PROD = 'produccion'
     }
 
@@ -12,27 +12,21 @@ pipeline {
     }
 
     triggers {
-        githubPush()  // Se ejecuta cuando hay un push a GitHub
+        githubPush()  // Activado con push en GitHub
     }
 
     stages {
         stage('Checkout') {
             steps {
-                script {
-                    checkout([
-                        $class: 'GitSCM',
-                        branches: [[name: "${BRANCH_NAME}"]],
-                        userRemoteConfigs: [[
-                            url: "${REPO_URL}",
-                            credentialsId: 'github-ssh'
-                        ]]
-                    ])
-                    sh 'git fetch --all'
-                    
-                    // Guardar el commit anterior antes de los cambios
-                    env.PREVIOUS_COMMIT = sh(script: "git rev-parse HEAD~1", returnStdout: true).trim()
-                    echo "📝 Último commit antes del push: ${env.PREVIOUS_COMMIT}"
-                }
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "${BRANCH_NAME}"]], // Busca la rama exacta
+                    userRemoteConfigs: [[
+                        url: "${REPO_URL}",
+                        credentialsId: 'github-ssh' // Aquí va la credencial SSH configurada
+                    ]]
+                ])
+                sh 'git fetch --all' // Sincroniza todas las ramas remotas
             }
         }
 
@@ -70,15 +64,8 @@ pipeline {
                     def qualityGateResult = waitForQualityGate()
 
                     if (qualityGateResult.status != 'OK') {
-                        echo "❌ Quality Gate falló, descartando el commit..."
-                        
-                        // Volver al commit anterior y forzar el push para eliminar el commit fallido
-                        sh """
-                            git reset --hard ${env.PREVIOUS_COMMIT}
-                            git push origin ${BRANCH_NAME} --force
-                        """
-                        
-                        error("🚨 ERROR: Quality Gates fallaron. Commit descartado.")
+                        echo "❌ ERROR: El análisis de SonarQube no pasó los Quality Gates de forma satisfactoria. Revisa los problemas en el código antes de continuar."
+                        error("🚨 ERROR: Quality Gates fallaron.")
                     } else {
                         echo "✅ Quality Gate aprobado, continuando con el pipeline..."
                     }
