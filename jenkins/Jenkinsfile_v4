@@ -3,8 +3,12 @@ pipeline {
 
     environment {
         REPO_URL = 'git@github.com:afiordaliso/repasando-programacion.git'
-        BRANCH_NAME = 'dev_fiorda' // Usa el nombre de la rama detectada por Jenkins
+        BRANCH_NAME = 'dev_fiorda'
         BRANCH_PROD = 'produccion'
+        GITHUB_TOKEN = credentials('github-token') // Token de GitHub almacenado en Jenkins
+        REPO_OWNER = 'afiordaliso' // Dueño del repositorio
+        REPO_NAME = 'repasando-programacion' // Nombre del repositorio
+        PR_NUMBER = '' // Se asignará si el pipeline detecta un PR
     }
 
     tools {
@@ -12,7 +16,7 @@ pipeline {
     }
 
     triggers {
-        githubPush()  // Activado con push en GitHub
+        githubPush()
     }
 
     stages {
@@ -20,26 +24,37 @@ pipeline {
             steps {
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: "${BRANCH_NAME}"]], // Busca la rama exacta
+                    branches: [[name: "${BRANCH_NAME}"]],
                     userRemoteConfigs: [[
                         url: "${REPO_URL}",
-                        credentialsId: 'github-ssh' // Aquí va la credencial SSH configurada
+                        credentialsId: 'github-ssh'
                     ]]
                 ])
-                sh 'git fetch --all' // Sincroniza todas las ramas remotas
+                sh 'git fetch --all'
             }
         }
 
-        stage('Construccion') {
+        stage('Detectar Pull Request') {
             steps {
-                echo "Construye el proyecto con Maven"
+                script {
+                    if (env.CHANGE_ID) { // Jenkins detecta si es un PR
+                        PR_NUMBER = env.CHANGE_ID
+                        echo "Este pipeline fue activado por el Pull Request #${PR_NUMBER}"
+                    }
+                }
+            }
+        }
+
+        stage('Construcción') {
+            steps {
+                echo "Construyendo el proyecto con Maven"
                 sh "mvn clean package -DskipTests"
             }
         }
 
         stage('Pruebas') {
             steps {
-                echo "Ejecuta las pruebas unitarias"
+                echo "Ejecutando pruebas unitarias"
                 timeout(time: 4, unit: 'MINUTES') {
                     sh "mvn clean install"
                 }
@@ -47,9 +62,9 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analisis') {
+        stage('SonarQube Análisis') {
             steps {
-                echo "Running SonarQube analysis"
+                echo "Ejecutando análisis de SonarQube"
                 withSonarQubeEnv('sonarqube') {
                     sh "mvn sonar:sonar"
                 }
@@ -58,37 +73,53 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
-                echo "Checking Quality Gate status"
-                sleep(10) // Para darle tiempo a que se genere el resultado en SonarQube
-                waitForQualityGate abortPipeline: true
+                script {
+                    echo "Verificando Quality Gate en SonarQube"
+                    sleep(10)
+                    def qualityGate = waitForQualityGate()
+
+                    if (qualityGate.status != 'OK') {
+                        echo "❌ Quality Gate falló. Cancelando PR #${PR_NUMBER} en GitHub..."
+
+                        if (PR_NUMBER) {
+                            sh """
+                                curl -X PATCH -H "Authorization: token ${GITHUB_TOKEN}" \
+                                -H "Accept: application/vnd.github.v3+json" \
+                                https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/pulls/${PR_NUMBER} \
+                                -d '{"state": "closed"}'
+                            """
+                        }
+                        error("Pipeline detenido porque falló el Quality Gate.")
+                    }
+                }
             }
         }
 
-stage('Merge en Producción') {
-    steps {
-        script {
-            echo "Merge en Producción"
-            sh """
-                git config --global user.email "fiordaa1@gmail.com"
-                git config --global user.name "Jenkins CI"
+        stage('Merge en Producción') {
+            steps {
+                script {
+                    echo "Realizando merge en producción"
+                    sh """
+                        git config --global user.email "fiordaa1@gmail.com"
+                        git config --global user.name "Jenkins CI"
 
-                git fetch origin
-                git checkout ${BRANCH_PROD}
-                git pull origin ${BRANCH_PROD}
-                git merge origin/${BRANCH_NAME} --no-ff --commit
-                git push origin ${BRANCH_PROD}
-            """
+                        git fetch origin
+                        git checkout ${BRANCH_PROD}
+                        git pull origin ${BRANCH_PROD}
+                        git merge origin/${BRANCH_NAME} --no-ff --commit
+                        git push origin ${BRANCH_PROD}
+                    """
+                }
+            }
         }
-    }
-}
     }
 
     post {
         success {
-            echo "Pipeline exitoso. Merge realizado."
+            echo "✅ Pipeline exitoso. Merge realizado."
         }
         failure {
-            echo "Pipeline fallido. No se realizó el merge."
+            echo "❌ Pipeline fallido. No se realizó el merge."
         }
     }
 }
